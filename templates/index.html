@@ -6,21 +6,8 @@
     <title>FuzzyPricing - Dynamic Logistics Dashboard</title>
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Geist:wght@400;500&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
-    <style>
-        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
-        .glass-card {
-            background: rgba(31, 41, 55, 0.7);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(55, 65, 81, 0.5);
-        }
-        .live-status-border {
-            border-top: 2px solid;
-            border-image: linear-gradient(to right, #10B981, #3B82F6) 1;
-        }
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: #111827; }
-        ::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; }
-    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet"/>
     <script id="tailwind-config">
         tailwind.config = {
             darkMode: "class",
@@ -29,10 +16,11 @@
                     colors: {
                         "error": "#ffb4ab", "secondary": "#adc6ff", "surface-container": "#191f2f", 
                         "tertiary-container": "#e29100", "primary-fixed": "#6ffbbe", "surface": "#0c1322", 
-                        "on-surface": "#dce2f7", "surface-variant": "#2e3545", "background": "#0c1322",
-                        "secondary-container": "#0566d9", "on-surface-variant": "#bbcabf",
+                        "on-surface": "#ffffff", "surface-variant": "#2e3545", "background": "#0c1322",
+                        "secondary-container": "#0566d9", "on-surface-variant": "#e2e8f0",
                         "outline-variant": "#3c4a42", "primary": "#4edea3", "tertiary": "#ffb95f",
                         "surface-container-low": "#141b2b", "surface-container-highest": "#2e3545",
+                        "on-background": "#ffffff"
                     },
                     spacing: { "stack-lg": "32px", "max-width": "1600px", "gutter": "24px" },
                     fontFamily: { "headline-lg": ["Inter"], "label-sm": ["Geist"], "code-sm": ["Geist"], "body-md": ["Inter"] }
@@ -106,8 +94,8 @@
                 <div class="flex justify-between items-center mb-6">
                     <h4 class="text-lg font-bold">Tren Kecepatan vs Harga</h4>
                 </div>
-                <div class="flex-1 min-h-[300px] relative bg-surface-container-low rounded-lg border border-outline-variant/30 flex items-center justify-center">
-                    <span class="text-on-surface-variant">Area Grafik Visual</span>
+                <div class="flex-1 min-h-[300px] relative bg-surface-container-low rounded-lg border border-outline-variant/30 flex items-center justify-center p-4">
+                    <canvas id="trendChart"></canvas>
                 </div>
             </div>
 
@@ -119,9 +107,9 @@
                     <div>
                         <label class="block text-xs text-on-surface-variant mb-2">Pilih Rute/Koridor</label>
                         <select id="input-koridor" class="w-full bg-surface-container-low border border-outline-variant rounded-lg text-sm px-4 py-2.5 focus:ring-2 focus:ring-primary focus:border-primary text-white">
-                            <option value="1">Koridor 1</option>
-                            <option value="8D">Koridor 8D</option>
-                            <option value="9">Koridor 9</option>
+                            <option value="1">Koridor 1 (Blok M - Kota)</option>
+                            <option value="8D">Koridor 8D (Meruya Selatan - Blok M)</option>
+                            <option value="9">Koridor 9 (Pinang Ranti - Pluit)</option>
                         </select>
                     </div>
                     <div>
@@ -150,6 +138,26 @@
                 <button id="btn-hitung" class="mt-6 w-full bg-secondary-container hover:bg-secondary-container/80 text-white py-3 rounded-lg font-bold transition-all shadow-lg">
                     Hitung Tarif Dinamis
                 </button>
+            </div>
+        </section>
+
+        <!-- Kurva Fungsi Keanggotaan Fuzzy -->
+        <section class="glass-card p-gutter rounded-xl">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                <div>
+                    <h4 class="text-lg font-bold flex items-center gap-2">
+                        <span class="material-symbols-outlined text-primary">analytics</span> Kurva Fungsi Keanggotaan Fuzzy (Membership Functions)
+                    </h4>
+                    <p class="text-xs text-on-surface-variant mt-1">Visualisasi fungsi keanggotaan logika fuzzy Mamdani yang digunakan untuk menghitung tarif dinamis</p>
+                </div>
+                <div class="flex bg-surface-container rounded-lg p-1 border border-outline-variant/30 text-xs self-stretch sm:self-auto justify-center">
+                    <button id="tab-kecepatan" class="tab-btn px-3 py-1.5 rounded-md bg-primary text-surface font-bold transition-all">Kecepatan</button>
+                    <button id="tab-jarak" class="tab-btn px-3 py-1.5 rounded-md text-on-surface-variant font-medium transition-all ml-1">Jarak</button>
+                    <button id="tab-pengali" class="tab-btn px-3 py-1.5 rounded-md text-on-surface-variant font-medium transition-all ml-1">Faktor Pengali</button>
+                </div>
+            </div>
+            <div class="h-[280px] relative bg-surface-container-low rounded-lg border border-outline-variant/30 p-4">
+                <canvas id="fuzzyChart"></canvas>
             </div>
         </section>
 
@@ -194,51 +202,19 @@
     </div>
 </main>
 
-<script>
-    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-    document.getElementById('current-date').textContent = new Date().toLocaleDateString('id-ID', options);
-
-    document.getElementById('btn-hitung').addEventListener('click', async () => {
-        const koridor = document.getElementById('input-koridor').value;
-        const jarak = document.getElementById('input-jarak').value;
-
-        if(!jarak) return alert("Masukkan jarak pengiriman!");
-
-        const btn = document.getElementById('btn-hitung');
-        const originalText = btn.innerHTML;
-        btn.innerHTML = "Menghitung...";
-        btn.disabled = true;
-
-        try {
-            const response = await fetch('/api/hitung', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ koridor: koridor, jarak: jarak })
-            });
-            const result = await response.json();
-
-            if(result.status === 'success') {
-                document.getElementById('val-kecepatan').innerHTML = `${result.kecepatan} <span class="text-sm font-normal text-on-surface-variant">km/jam</span>`;
-                document.getElementById('val-pengali').innerText = `${result.pengali}x`;
-                
-                const formatRp = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(result.tarif_akhir);
-                const formatBaseRp = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(result.tarif_awal);
-                
-                document.getElementById('val-harga').innerText = formatRp;
-                document.getElementById('receipt-base').innerText = formatBaseRp;
-                document.getElementById('receipt-multiplier').innerText = `x ${result.pengali}`;
-                document.getElementById('receipt-total').innerText = formatRp;
-
-                setTimeout(() => location.reload(), 2000);
-            }
-        } catch (error) {
-            console.error("Error:", error);
-            alert("Terjadi kesalahan saat menghitung tarif.");
-        } finally {
-            btn.innerHTML = originalText;
-            btn.disabled = false;
-        }
-    });
+<!-- Menampung data riwayat transaksi dalam format JSON murni untuk menghindari error merah di IDE -->
+<script id="riwayat-data" type="application/json">
+    [
+        {% for row in riwayat %}
+        {
+            "kecepatan": {{ row.rata_rata_speed }},
+            "harga": {{ row.tarif_akhir }},
+            "id": "TRX-{{ row.id }}"
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ]
 </script>
+
+<script src="{{ url_for('static', filename='js/script.js') }}"></script>
 </body>
 </html>

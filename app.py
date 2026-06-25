@@ -41,5 +41,5 @@ def hitung_tarif():
     })
 
 if __name__ == '__main__':
-    print("🚀 Server berjalan di http://127.0.0.1:8000")
-    app.run(debug=True, port=8000)
+    print("🚀 Server berjalan di http://127.0.0.1:8080")
+    app.run(debug=True, port=8080)
