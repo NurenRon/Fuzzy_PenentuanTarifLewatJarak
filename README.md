@@ -120,20 +120,27 @@ Contoh struktur:
 
 ```sql
 CREATE TABLE log_gps_transjakarta (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    koridor VARCHAR(20),
-    latitude DOUBLE,
-    longitude DOUBLE,
-    speed DOUBLE,
-    timestamp DATETIME
+    id_log INT AUTO_INCREMENT PRIMARY KEY,
+    bus_code VARCHAR(50),
+    trip_id VARCHAR(50),
+    gps_datetime DATETIME,
+    location VARCHAR(100),
+    dtd FLOAT,
+    corridor VARCHAR(100),
+    longitude DECIMAL(11,8),
+    latitude DECIMAL(11,8),
+    speed FLOAT,
+    course INT,
+    color VARCHAR(50)
 );
 
 CREATE TABLE transaksi_harga_dinamis (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    koridor VARCHAR(20),
-    jarak_km DOUBLE,
-    kecepatan_rata_rata DOUBLE,
-    faktor_harga DOUBLE,
+    corridor VARCHAR(20),
+    jarak_pengiriman_km DOUBLE,
+    rata_rata_speed DOUBLE,
+    faktor_pengali_fuzzy DOUBLE,
+    tarif_akhir DOUBLE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 ```
@@ -150,7 +157,8 @@ INTO TABLE log_gps_transjakarta
 FIELDS TERMINATED BY ','
 ENCLOSED BY '"'
 LINES TERMINATED BY '\n'
-IGNORE 1 ROWS;
+IGNORE 1 ROWS
+(bus_code, trip_id, gps_datetime, location, dtd, corridor, longitude, latitude, speed, course, color);
 ```
 
 > **Catatan:** Sesuaikan lokasi file CSV dengan direktori pada komputer Anda.
